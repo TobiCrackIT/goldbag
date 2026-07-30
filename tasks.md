@@ -16,11 +16,11 @@
 
 > Goal: kill the three blocking unknowns (PRD §11) and stand up the monorepo skeleton. Nothing here is user-facing, but everything downstream depends on it.
 
-- [ ] **0.1 — Initialise repo & monorepo skeleton**
+- [x] **0.1 — Initialise repo & monorepo skeleton**
   `git init`, `.gitignore`, pnpm workspace (`apps/`, `packages/`), `turbo.json` with `build`/`typecheck`/`lint`/`test` pipelines, shared tsconfig + eslint in `packages/config`, root README.
   **Verify:** `pnpm install && pnpm turbo typecheck lint` passes on a clean clone.
 
-- [ ] **0.2 — `packages/shared`: core contracts**
+- [x] **0.2 — `packages/shared`: core contracts**
   Zod schemas for the response envelope (`{data} | {error:{code,message}}`), the error-code enum (`QUOTE_EXPIRED`, `SLIPPAGE_EXCEEDED`, `INSUFFICIENT_BALANCE`, `NETWORK_CONGESTION`, …), `ChainId`, asset category enum, and branded decimal-string types for money.
   **Verify:** unit tests exercise valid/invalid parses; package builds and is importable from a scratch script.
 
