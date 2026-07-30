@@ -25,8 +25,8 @@
   **Verify:** unit tests exercise valid/invalid parses; package builds and is importable from a scratch script.
 
 - [ ] **0.3 — Spike: Privy Expo end-to-end custody path** *(blocking open question #3)*
-  Throwaway Expo dev-client app in `archive/spikes/privy-spike`: email + Google login → embedded Solana wallet created → sign & send a devnet transfer → export secret key → import into Phantom.
-  **Verify:** written spike report committed (`archive/spikes/privy-spike/REPORT.md`) with the wallet address round-tripping into Phantom; go/no-go call on Privy recorded.
+  Throwaway Expo dev-client app in `docs/spikes/privy-spike`: email + Google login → embedded Solana wallet created → sign & send a devnet transfer → export secret key → import into Phantom.
+  **Verify:** written spike report committed (`docs/spikes/privy-spike/REPORT.md`) with the wallet address round-tripping into Phantom; go/no-go call on Privy recorded.
 
 - [ ] **0.4 — Spike: Jupiter swap with platform fee**
   Node script: quote USDC→AAPLx via Jupiter API with platform-fee params, build tx, sign with a test keypair, submit on mainnet with ~$2, confirm fee lands in the fee account. Also test the gasless path (fee-payer options — Privy sponsorship vs Jupiter fee-payer).
