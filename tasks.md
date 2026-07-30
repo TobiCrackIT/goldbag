@@ -24,9 +24,8 @@
   Zod schemas for the response envelope (`{data} | {error:{code,message}}`), the error-code enum (`QUOTE_EXPIRED`, `SLIPPAGE_EXCEEDED`, `INSUFFICIENT_BALANCE`, `NETWORK_CONGESTION`, …), `ChainId`, asset category enum, and branded decimal-string types for money.
   **Verify:** unit tests exercise valid/invalid parses; package builds and is importable from a scratch script.
 
-- [ ] **0.3 — Spike: Privy Expo end-to-end custody path** *(blocking open question #3)*
-  Throwaway Expo dev-client app in `docs/spikes/privy-spike`: email + Google login → embedded Solana wallet created → sign & send a devnet transfer → export secret key → import into Phantom.
-  **Verify:** written spike report committed (`docs/spikes/privy-spike/REPORT.md`) with the wallet address round-tripping into Phantom; go/no-go call on Privy recorded.
+- [ ] **0.3 — ~~Spike: Privy Expo end-to-end custody path~~ Deferred (2026-07-30), folded into 2.3/2.6**
+  Decision: instead of a throwaway spike, the auth/wallet vendor is contained behind the `AuthProvider` / `WalletSession` seam (architecture §4.3b, §5.6), so a vendor failure discovered mid-build costs one adapter, not a rewrite. Custody-path validation moves into real tasks: 2.3 verifies a devnet transfer signed through the session port, 2.6 verifies the Phantom key-export round-trip. First Jupiter versioned-tx signature happens in 4.4 — accepted residual risk.
 
 - [ ] **0.4 — Spike: Jupiter swap with platform fee**
   Node script: quote USDC→AAPLx via Jupiter API with platform-fee params, build tx, sign with a test keypair, submit on mainnet with ~$2, confirm fee lands in the fee account. Also test the gasless path (fee-payer options — Privy sponsorship vs Jupiter fee-payer).
@@ -53,12 +52,12 @@
   **Verify:** `curl /health` returns `{data:{status:"ok"}}` locally and in Docker.
 
 - [ ] **1.2 — Prisma schema & migrations (full MVP schema)**
-  All tables from architecture §4.4 (`users`, `wallets`, `assets`, `asset_stats`, `candles`, `watchlist_items`, `orders`, `deposits`, `position_lots`, `push_tokens`, `notifications`); DECIMAL for all money/quantity columns; `(chain, token_address)` unique.
+  All tables from architecture §4.4 (`users`, `wallets`, `assets`, `asset_stats`, `candles`, `watchlist_items`, `orders`, `deposits`, `position_lots`, `push_tokens`, `notifications`); DECIMAL for all money/quantity columns; `(chain, token_address)` unique; `users` keyed by `(auth_provider, provider_user_id)` — no vendor-named columns (vendor seam, §4.3b).
   **Verify:** `prisma migrate dev` from empty DB succeeds; seed script inserts 3 sample assets; a smoke test queries them back.
 
-- [ ] **1.3 — Privy auth middleware + `POST /auth/session`**
-  Verify Privy access token (server SDK, keys cached), upsert `users` + `wallets` on first sight, attach `req.user`; per-IP and per-user rate limiting (Redis).
-  **Verify:** integration test — a real (test-app) Privy token creates a user row and returns a session; a forged token gets 401; hammering an endpoint gets 429.
+- [ ] **1.3 — Auth middleware: `AuthProvider` port + Privy adapter + `POST /auth/session`**
+  `AuthProvider` interface (§4.3b) with the Privy adapter in `modules/auth/providers/privy/` (server SDK, keys cached); upsert `users` + `wallets` on first sight, attach `req.user`; per-IP and per-user rate limiting (Redis); lint rule blocks vendor SDK imports outside `providers/`.
+  **Verify:** integration test — a real (test-app) Privy token creates a user row and returns a session; a forged token gets 401; hammering an endpoint gets 429; a mock second adapter passes the same integration suite (proves the seam).
 
 - [ ] **1.4 — Asset registry module + admin endpoints**
   CRUD under `/admin` (allowlist-token auth), public `GET /assets?category=&search=&cursor=` with pagination and status filtering (only `listed` visible).
@@ -98,9 +97,9 @@
   `src/lib/api/` client generated over `packages/shared` schemas; QueryClient with MMKV persister; `<QueryBoundary>` wrapper enforcing loading/empty/error states.
   **Verify:** a demo screen lists staging assets with skeleton → data → airplane-mode error state, all three visibly designed.
 
-- [ ] **2.3 — Privy auth: onboarding flow**
-  `welcome → login` (email OTP, Google, Apple) → embedded wallet provisioned → `POST /auth/session` → land on Home. `useSession` hook adapts `usePrivy()` for the app.
-  **Verify:** Maestro E2E — fresh install to authenticated Home in ≤ 60s; relogin on a second device shows the same wallet address (PRD 7.1 acceptance).
+- [ ] **2.3 — Auth onboarding flow (session port + Privy adapter)**
+  `welcome → login` (email OTP, Google, Apple) → embedded wallet provisioned → `POST /auth/session` → land on Home. `WalletSession` port (§5.6) with the Privy adapter in `features/auth/providers/privy/`; `@privy-io/expo` import blocked elsewhere by lint rule.
+  **Verify:** Maestro E2E — fresh install to authenticated Home in ≤ 60s; relogin on a second device shows the same wallet address (PRD 7.1 acceptance); a devnet transfer signed via `signTransaction` through the port lands on-chain (custody path validated — replaces spike 0.3).
 
 - [ ] **2.4 — App lock (biometric/PIN gate)**
   Top-level overlay in `_layout.tsx`: cold start + foreground-after-N-minutes; `expo-local-authentication`; settings stored in secure store.

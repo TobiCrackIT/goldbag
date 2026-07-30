@@ -1,7 +1,7 @@
 # Goldbag — Architecture Document
 
-**Version:** 0.1 (Draft)
-**Date:** 2026-07-27
+**Version:** 0.2 (Draft — added auth/wallet vendor seam: `AuthProvider` §4.3b, `WalletSession` §5.6)
+**Date:** 2026-07-30
 **Companion doc:** `goldbag-prd.md` (v0.2)
 **Scope:** Backend (Node.js/TypeScript/PostgreSQL) + Mobile app (React Native/Expo). Covers storage, data flows, state management, navigation, folder structure, and dependencies.
 
@@ -86,7 +86,7 @@ goldbag/
 | Cache / pub-sub / rate limit | **Redis** (Upstash or managed) | One dependency covers price cache, WS fan-out, BullMQ, and rate limiting. |
 | Job queue | **BullMQ** | Redis-backed, delayed jobs + retries with backoff — exactly what trade confirmation and deposit processing need. |
 | Solana | `@solana/web3.js` v2 + **Helius** (RPC + webhooks) + **Jupiter API** (quotes/swaps) | Helius webhooks replace hand-rolled address polling; Jupiter handles routing + platform fee. |
-| Auth | **Privy server SDK** (verify access tokens) | The app never invents its own auth; every request carries a Privy access token, verified server-side, mapped to our `users` row. |
+| Auth | **Privy server SDK** behind an `AuthProvider` port (§4.3b) | The app never invents its own auth; every request carries a vendor access token, verified server-side by the active adapter, mapped to our `users` row. Vendor swap = new adapter, not a rewrite. |
 | Validation | **Zod** everywhere | Shared with mobile via `packages/shared`. |
 | Logging/observability | **pino** + Sentry + OpenTelemetry traces | Structured logs with tx signatures; redaction list for secrets. |
 
@@ -99,7 +99,7 @@ apps/api/src/
   config/
     env.ts               # zod-validated env schema; process exits on failure
   modules/
-    auth/                # Privy token verification, user upsert, sessions
+    auth/                # AuthProvider port + vendor adapters (providers/privy/), user upsert, sessions
     users/               # profile, devices (push tokens), app-lock prefs
     assets/              # registry CRUD (admin), listing, search
     market/              # prices, candles, 24h stats (reads cache, falls back to provider)
@@ -134,12 +134,32 @@ interface ChainAdapter {
 
 Everything above this interface (orders, portfolio, deposits) is chain-agnostic. Adding Ethereum later = new adapter + new rows in the asset registry, no schema change.
 
+### 4.3b The AuthProvider interface (auth/wallet vendor seam)
+
+The same adapter pattern isolates the auth/wallet vendor. Because Goldbag is non-custodial, the backend's *only* vendor contact is token verification and identity mapping — one interface:
+
+```typescript
+interface AuthProvider {
+  name: AuthProviderId;                                  // 'privy' | 'dynamic' | ...
+  verifyAccessToken(token: string): Promise<VerifiedIdentity>;
+}
+// VerifiedIdentity = { providerUserId: string; email?: string;
+//                      wallets: { chain: ChainId; address: string }[] }
+```
+
+Rules that make the seam real rather than aspirational:
+- `users` are keyed `(auth_provider, provider_user_id)` — no vendor-named columns.
+- Only `modules/auth/providers/<vendor>/` may import a vendor server SDK (lint-enforced via no-restricted-imports).
+- Everything downstream consumes `VerifiedIdentity` / `req.user`; swapping vendors = one new adapter + a config flip.
+- What the seam cannot do: migrate live users (wallets are provisioned on vendor infra — export/re-onboard is a product flow, not a code swap) or grant capabilities a vendor lacks (raw key export is a hard vendor-selection requirement; MPC-based wallets often can't provide it).
+
 ### 4.4 Data Storage
 
 **PostgreSQL — system of record for everything *we* originate; index for everything the chain originates.**
 
 ```
-users            id, privy_user_id (uq), email, created_at, app_lock_prefs
+users            id, auth_provider, provider_user_id, email, created_at,   -- (auth_provider, provider_user_id) unique
+                 app_lock_prefs
 wallets          id, user_id, chain, address (uq per chain), is_primary
 assets           id, chain, token_address, symbol, name, category      -- (chain, token_address) unique
                  (stock|etf|gold_silver), logo_url, decimals,
@@ -246,7 +266,7 @@ Response envelope: `{ data }` or `{ error: { code, message } }` — `code` is a 
 | Navigation | **Expo Router** (file-based, typed routes) | File-system routing + deep links for free; typed `href`s. React Navigation underneath, so escape hatches exist. |
 | Server state | **TanStack Query** | All API data: caching, refetch, optimistic updates, pull-to-refresh. Nothing from the API is ever copied into a client store. |
 | Client state | **Zustand** (small stores) | Only true client state: trade-ticket draft, UI prefs, onboarding step. Redux is overkill; Context alone causes re-render sprawl. |
-| Auth/wallet state | **Privy Expo SDK provider** | `usePrivy()` is the single source for auth + wallet; a thin `useSession` hook adapts it for the rest of the app. |
+| Auth/wallet state | **Privy Expo SDK behind a session port** (§5.6) | The app consumes `useSession`/`useWalletActions` only; `@privy-io/expo` is imported solely inside `features/auth/providers/privy/` (lint-enforced). Vendor swap = new adapter + rebuild. |
 | Persistence | **MMKV** (+ TanStack Query persister) | Fast synchronous storage for query cache (instant cold-start UI) and prefs. Secrets never go here. |
 | Secure storage | **expo-secure-store** / Keychain | Session material, app-lock settings. Key custody itself is inside Privy's SDK. |
 | Charts | **victory-native XL** (Skia-based) + `react-native-gesture-handler` | 60fps chart scrubbing on the UI thread; the Moonshot benchmark rules out JS-thread SVG charts. |
@@ -330,6 +350,27 @@ Deep links (`goldbag://asset/AAPLx`) come free with Expo Router — needed later
 - **App lock:** biometric/PIN gate at cold start and on foreground after N minutes; re-prompt for key export and trades above the user's threshold. Implemented as a top-level overlay in `_layout.tsx`, not per-screen.
 - **Key export:** renders the key only after fresh biometric auth, in a screenshot-blocked screen (`expo-screen-capture`), never touches logs/clipboard analytics, cleared from memory on blur.
 - **Every query screen** ships loading skeleton + empty + error states via a shared `<QueryBoundary>` wrapper — this is how the PRD's "no blank screens" bar is enforced structurally rather than by review.
+
+### 5.6 Auth/wallet vendor seam (mobile)
+
+Mirror of backend §4.3b. The app depends on a session port, not a vendor SDK:
+
+```typescript
+interface WalletSession {
+  status: 'loading' | 'signed_out' | 'ready';
+  user: { providerUserId: string; email?: string } | null;
+  walletAddress: string | null;          // active Solana address
+  getAccessToken(): Promise<string>;     // sent with every API call
+  login(method: 'email' | 'google' | 'apple'): Promise<void>;
+  logout(): Promise<void>;
+  signTransaction(txBase64: string): Promise<string>;  // signed, base64
+  exportSecretKey(): Promise<string>;    // gated by biometric flow upstream
+}
+```
+
+- `features/auth/providers/privy/` is the only directory allowed to import `@privy-io/expo` — enforced with an ESLint `no-restricted-imports` rule so the boundary cannot erode PR by PR.
+- `useSession()` / `useWalletActions()` expose the port; screens, the trade flow (sign step in 4.8), and key export all consume the port.
+- Swapping Privy → Dynamic/Turnkey = implement the adapter, update the provider in `_layout.tsx`, rebuild the dev client. Login-sheet UX differences will leak (acceptable); missing vendor capabilities (e.g. raw key export) will not be papered over by the port — they are vendor-selection criteria.
 
 ---
 
