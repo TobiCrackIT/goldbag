@@ -1,0 +1,17 @@
+{
+  "name": "@goldbag/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint": "./eslint.config.base.mjs"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.30.0",
+    "typescript-eslint": "^8.35.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.0.0"
+  }
+}
