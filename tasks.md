@@ -32,11 +32,11 @@
   Node script: quote USDC→AAPLx via Jupiter API with platform-fee params, build tx, sign with a test keypair, submit on mainnet with ~$2, confirm fee lands in the fee account. Also test the gasless path (fee-payer options — Privy sponsorship vs Jupiter fee-payer).
   **Verify:** script output shows fee-account balance increase; REPORT.md records chosen fee mechanism and gasless strategy (resolves open questions #4/#6).
 
-- [ ] **0.5 — Spike: gold/silver mint selection** *(blocking open question #2)*
+- [x] **0.5 — Spike: gold/silver mint selection** *(blocking open question #2)* → [decision](docs/spikes/gold-silver-mints/REPORT.md)
   Evaluate candidate mints (liquidity depth, issuer credibility, redemption, bridge risk) using Birdeye/Jupiter data.
   **Verify:** REPORT.md with a ranked table and an explicit decision: selected mints, or "ship stocks-only, gold fast-follow".
 
-- [ ] **0.6 — Price-data vendor selection** *(open question #5)*
+- [x] **0.6 — Price-data vendor selection** *(open question #5)* → [decision](docs/spikes/price-vendor/REPORT.md)
   Compare Birdeye vs Jupiter price API vs CoinGecko on: OHLC coverage for xStocks + chosen metal mints, rate limits, price freshness, cost at 100-asset scale.
   **Verify:** REPORT.md with the decision and a working sample script fetching price + 1D candles for AAPLx from the chosen vendor.
 
