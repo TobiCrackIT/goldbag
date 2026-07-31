@@ -14,9 +14,11 @@ if (!env.PRIVY_APP_ID || !env.PRIVY_APP_SECRET) {
 
 const prisma = createPrisma();
 const redis = createRedis(env.REDIS_URL);
+const redisSubscriber = createRedis(env.REDIS_URL);
 const app = await buildApp(env, {
   prisma,
   redis,
+  redisSubscriber,
   authProvider: createPrivyAuthProvider(env.PRIVY_APP_ID, env.PRIVY_APP_SECRET),
   adminToken: env.ADMIN_TOKEN,
 });
@@ -27,6 +29,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
     await app.close();
     await prisma.$disconnect();
     redis.disconnect();
+    redisSubscriber.disconnect();
     process.exit(0);
   });
 }
