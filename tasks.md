@@ -108,8 +108,9 @@
   `account/wallet.tsx` + `GET /wallet/deposit-info`; address with QR, copy-with-haptic, "Solana network only — USDC/USDT" warning copy.
   **Verify:** QR scanned by Phantom resolves to the correct address; copy button fills clipboard.
 
-- [ ] **2.6 — Secret key export flow**
-  `account/export-key.tsx` modal: fresh biometric auth → 3-step warning → key display on screenshot-blocked screen (`expo-screen-capture`), cleared on blur.
+- [ ] **2.6 — Secret key export flow** *(scope grew — see note)*
+  `account/export-key.tsx` modal: fresh biometric auth → 3-step warning → **WebView** onto a hosted export page (`react-native-webview`, `incognito`), screenshot-blocked (`expo-screen-capture`).
+  **Extra scope discovered 2026-07-31:** Privy's mobile SDKs have no key-export method; the documented approach ([recipe](https://docs.privy.io/recipes/mobile-key-export)) is a small hosted React page running Privy's web SDK, which posts `{status}` back via `window.ReactNativeWebView.postMessage`. So this task also requires **building and deploying that page** and allowlisting its origin in the Privy dashboard. Upside: the key assembles on a separate origin, so it never touches Goldbag infrastructure — the non-custodial posture holds. Friction: the user re-authenticates inside the WebView.
   **Verify:** exported key imports into Phantom and controls the same address (PRD 7.1 acceptance); screenshot attempt is blocked on Android; key never appears in logs.
 
 - [ ] **2.7 — Logout & session hygiene**
