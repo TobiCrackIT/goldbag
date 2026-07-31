@@ -18,6 +18,7 @@ const app = await buildApp(env, {
   prisma,
   redis,
   authProvider: createPrivyAuthProvider(env.PRIVY_APP_ID, env.PRIVY_APP_SECRET),
+  adminToken: env.ADMIN_TOKEN,
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
