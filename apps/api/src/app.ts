@@ -15,6 +15,7 @@ import { authPlugin } from "./modules/auth/plugin.js";
 import type { AuthProvider } from "./modules/auth/provider.js";
 import { assetsPlugin } from "./modules/assets/routes.js";
 import { marketPlugin } from "./modules/market/routes.js";
+import { watchlistPlugin } from "./modules/watchlist/routes.js";
 
 export interface AppDeps {
   prisma: PrismaClient;
@@ -60,6 +61,7 @@ export async function buildApp(env: Env, deps: AppDeps) {
   await app.register(authPlugin, { provider: deps.authProvider, prisma: deps.prisma });
   await app.register(assetsPlugin, { prisma: deps.prisma, adminToken: deps.adminToken });
   await app.register(marketPlugin, { prisma: deps.prisma, redis: deps.redis });
+  await app.register(watchlistPlugin, { prisma: deps.prisma });
 
   app.get(
     "/health",
