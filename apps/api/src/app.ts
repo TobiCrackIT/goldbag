@@ -16,6 +16,7 @@ import type { AuthProvider } from "./modules/auth/provider.js";
 import { assetsPlugin } from "./modules/assets/routes.js";
 import { marketPlugin } from "./modules/market/routes.js";
 import { watchlistPlugin } from "./modules/watchlist/routes.js";
+import { wsPlugin } from "./modules/ws/gateway.js";
 
 export interface AppDeps {
   prisma: PrismaClient;
@@ -26,6 +27,8 @@ export interface AppDeps {
   rateLimit?: { max: number; timeWindowMs: number };
   /** Allowlist token for /admin routes; admin surface disabled when absent. */
   adminToken?: string;
+  /** Dedicated subscriber connection; WS gateway registers only when present. */
+  redisSubscriber?: Redis;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -62,6 +65,13 @@ export async function buildApp(env: Env, deps: AppDeps) {
   await app.register(assetsPlugin, { prisma: deps.prisma, adminToken: deps.adminToken });
   await app.register(marketPlugin, { prisma: deps.prisma, redis: deps.redis });
   await app.register(watchlistPlugin, { prisma: deps.prisma });
+  if (deps.redisSubscriber) {
+    await app.register(wsPlugin, {
+      prisma: deps.prisma,
+      provider: deps.authProvider,
+      subscriber: deps.redisSubscriber,
+    });
+  }
 
   app.get(
     "/health",
