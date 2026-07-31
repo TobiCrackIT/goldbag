@@ -22,7 +22,15 @@ describe.skipIf(!hasDb)("asset registry (task 1.4 verify)", () => {
     );
   });
   afterAll(async () => {
-    await prisma.asset.deleteMany({ where: { symbol: { startsWith: "TST" } } });
+    // The live poller may have written stats/candles for test assets.
+    const testAssets = await prisma.asset.findMany({
+      where: { symbol: { startsWith: "TST" } },
+      select: { id: true },
+    });
+    const ids = testAssets.map((a) => a.id);
+    await prisma.assetStats.deleteMany({ where: { assetId: { in: ids } } });
+    await prisma.candle.deleteMany({ where: { assetId: { in: ids } } });
+    await prisma.asset.deleteMany({ where: { id: { in: ids } } });
     await app.close();
     await prisma.$disconnect();
   });

@@ -23,6 +23,8 @@ const EnvSchema = z.object({
   // swap base URL for the keyed portal tier when we outgrow it.
   JUPITER_BASE_URL: z.url().default("https://lite-api.jup.ag"),
   PRICE_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(10_000),
+  // Chart backfill on new listings only (never the hot path).
+  GECKOTERMINAL_BASE_URL: z.url().default("https://api.geckoterminal.com/api/v2"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

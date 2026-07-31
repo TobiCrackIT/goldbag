@@ -4,3 +4,4 @@ export * from "./chain.js";
 export * from "./money.js";
 export * from "./assets.js";
 export * from "./market.js";
+export * from "./candles.js";
