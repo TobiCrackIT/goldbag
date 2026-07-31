@@ -60,11 +60,14 @@ module.exports = ({ config }) => ({
     adaptiveIcon: { backgroundColor: "#000000" },
   },
   web: { bundler: "metro" },
-  plugins: [
-    "expo-router",
-    "expo-dev-client",
-    ["@sentry/react-native/expo", { organization: "goldbag", project: "mobile" }],
-  ],
+  // Sentry's config plugin is deliberately absent. It injects an "Upload
+  // Debug Symbols to Sentry" build phase that runs sentry-cli, which
+  // cannot resolve its own dependencies under pnpm's strict node_modules
+  // (build 1 failed with node:internal/modules/cjs/loader). Setting
+  // SENTRY_DISABLE_AUTO_UPLOAD only skips the upload — the phase still
+  // runs and still crashes. Re-add once a real Sentry project, DSN and
+  // SENTRY_AUTH_TOKEN exist, and verify the phase survives pnpm.
+  plugins: ["expo-router", "expo-dev-client"],
   experiments: { typedRoutes: true },
   extra: {
     variant,
