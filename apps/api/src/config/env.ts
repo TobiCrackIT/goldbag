@@ -16,6 +16,9 @@ const EnvSchema = z.object({
   // commands still boot; the auth plugin refuses to register without them.
   PRIVY_APP_ID: z.string().min(1).optional(),
   PRIVY_APP_SECRET: z.string().min(1).optional(),
+  // Allowlist token for /admin routes (curl/internal dashboard — PRD §6).
+  // Admin routes stay disabled when unset.
+  ADMIN_TOKEN: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

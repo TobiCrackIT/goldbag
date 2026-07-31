@@ -13,6 +13,7 @@ import type { Env } from "./config/env.js";
 import { loggerOptions } from "./lib/logger.js";
 import { authPlugin } from "./modules/auth/plugin.js";
 import type { AuthProvider } from "./modules/auth/provider.js";
+import { assetsPlugin } from "./modules/assets/routes.js";
 
 export interface AppDeps {
   prisma: PrismaClient;
@@ -21,6 +22,8 @@ export interface AppDeps {
   redis?: Redis;
   /** Override for tests; production default is generous per-identity. */
   rateLimit?: { max: number; timeWindowMs: number };
+  /** Allowlist token for /admin routes; admin surface disabled when absent. */
+  adminToken?: string;
 }
 
 export async function buildApp(env: Env, deps: AppDeps) {
@@ -54,6 +57,7 @@ export async function buildApp(env: Env, deps: AppDeps) {
   });
 
   await app.register(authPlugin, { provider: deps.authProvider, prisma: deps.prisma });
+  await app.register(assetsPlugin, { prisma: deps.prisma, adminToken: deps.adminToken });
 
   app.get(
     "/health",
