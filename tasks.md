@@ -54,7 +54,7 @@
   All tables from architecture §4.4 (`users`, `wallets`, `assets`, `asset_stats`, `candles`, `watchlist_items`, `orders`, `deposits`, `position_lots`, `push_tokens`, `notifications`); DECIMAL for all money/quantity columns; `(chain, token_address)` unique; `users` keyed by `(auth_provider, provider_user_id)` — no vendor-named columns (vendor seam, §4.3b).
   **Verify:** `prisma migrate dev` from empty DB succeeds; seed script inserts 3 sample assets; a smoke test queries them back.
 
-- [ ] **1.3 — Auth middleware: `AuthProvider` port + Privy adapter + `POST /auth/session`**
+- [x] **1.3 — Auth middleware: `AuthProvider` port + Privy adapter + `POST /auth/session`** *(residual: positive-path with a real login token lands with 2.3's first app login)*
   `AuthProvider` interface (§4.3b) with the Privy adapter in `modules/auth/providers/privy/` (server SDK, keys cached); upsert `users` + `wallets` on first sight, attach `req.user`; per-IP and per-user rate limiting (Redis); lint rule blocks vendor SDK imports outside `providers/`.
   **Verify:** integration test — a real (test-app) Privy token creates a user row and returns a session; a forged token gets 401; hammering an endpoint gets 429; a mock second adapter passes the same integration suite (proves the seam).
 
