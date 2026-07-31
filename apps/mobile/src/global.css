@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Monochrome design system. Every colour is black, white, or a grey
+ * between them — no hues anywhere. Values are space-separated RGB so
+ * Tailwind's `/opacity` modifier keeps working (bg-primary/10).
+ *
+ * Light and dark are exact inversions: `primary` is the foreground in
+ * both modes, `bg` the background, so component classes never branch.
+ */
+@layer base {
+  :root {
+    --color-bg: 255 255 255;
+    --color-surface: 247 247 247;
+    --color-elevated: 237 237 237;
+    --color-border: 214 214 214;
+    --color-primary: 0 0 0;
+    --color-secondary: 82 82 82;
+    --color-muted: 138 138 138;
+    /* Inverted pairing for primary buttons: accent bg + onAccent text. */
+    --color-accent: 0 0 0;
+    --color-on-accent: 255 255 255;
+  }
+
+  .dark:root {
+    --color-bg: 0 0 0;
+    --color-surface: 13 13 13;
+    --color-elevated: 26 26 26;
+    --color-border: 46 46 46;
+    --color-primary: 255 255 255;
+    --color-secondary: 163 163 163;
+    --color-muted: 110 110 110;
+    --color-accent: 255 255 255;
+    --color-on-accent: 0 0 0;
+  }
+}
+
+:root {
+  --font-display:
+    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
+    Segoe UI Symbol, Noto Color Emoji;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+}
