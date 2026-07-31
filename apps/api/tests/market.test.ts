@@ -42,8 +42,28 @@ describe.skipIf(!hasInfra)("market endpoints + candle jobs (task 1.6)", () => {
   });
 
   it("GET /market/prices serves cached ticks and falls back to asset_stats", async () => {
-    // Redis-cached path (poller keeps these warm) or DB fallback — both
-    // must produce the same shape.
+    // Own the fixtures: on a fresh database (CI) the poller has never run,
+    // so neither the cache nor asset_stats is populated.
+    for (const [i, id] of assetIds.entries()) {
+      const priceUsd = String(100 + i);
+      await prisma.assetStats.upsert({
+        where: { assetId: id },
+        create: { assetId: id, priceUsd, change24hPct: "1.5" },
+        update: { priceUsd, change24hPct: "1.5" },
+      });
+      await redis.set(
+        priceKey(id),
+        JSON.stringify({
+          assetId: id,
+          priceUsd,
+          change24hPct: 1.5,
+          underlyingPriceUsd: null,
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    }
+
+    // Cache-hit path.
     const res = await app.inject({
       method: "GET",
       url: `/market/prices?ids=${assetIds.join(",")}`,
@@ -56,10 +76,21 @@ describe.skipIf(!hasInfra)("market endpoints + candle jobs (task 1.6)", () => {
       expect(t).toHaveProperty("updatedAt");
     }
 
-    // Force the DB-fallback path for one asset.
+    // DB-fallback path: same shape, no cache entry.
     await redis.del(priceKey(assetIds[0]!));
     const res2 = await app.inject({ method: "GET", url: `/market/prices?ids=${assetIds[0]}` });
-    expect(res2.json().data).toHaveLength(1);
+    const fallback = res2.json().data;
+    expect(fallback).toHaveLength(1);
+    expect(fallback[0].assetId).toBe(assetIds[0]);
+    expect(Number(fallback[0].priceUsd)).toBe(100);
+
+    // Unknown ids are omitted, not errors.
+    const res3 = await app.inject({
+      method: "GET",
+      url: "/market/prices?ids=00000000-0000-0000-0000-000000000000",
+    });
+    expect(res3.statusCode).toBe(200);
+    expect(res3.json().data).toHaveLength(0);
   });
 
   it("candle-builder folds ticks into all four intervals with correct o/h/l/c", async () => {
