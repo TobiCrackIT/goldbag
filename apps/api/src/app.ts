@@ -1,21 +1,59 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyError } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import {
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { apiResponse, ok } from "@goldbag/shared";
+import type { Redis } from "ioredis";
+import type { PrismaClient } from "@prisma/client";
+import { apiResponse, err, ok } from "@goldbag/shared";
 import type { Env } from "./config/env.js";
 import { loggerOptions } from "./lib/logger.js";
+import { authPlugin } from "./modules/auth/plugin.js";
+import type { AuthProvider } from "./modules/auth/provider.js";
 
-export function buildApp(env: Env) {
+export interface AppDeps {
+  prisma: PrismaClient;
+  authProvider: AuthProvider;
+  /** Redis-backed limits in real deployments; in-memory store when absent (tests). */
+  redis?: Redis;
+  /** Override for tests; production default is generous per-identity. */
+  rateLimit?: { max: number; timeWindowMs: number };
+}
+
+export async function buildApp(env: Env, deps: AppDeps) {
   const app = Fastify({
     logger: env.NODE_ENV === "test" ? false : loggerOptions(env),
   }).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+
+  await app.register(rateLimit, {
+    global: true,
+    max: deps.rateLimit?.max ?? 120,
+    timeWindow: deps.rateLimit?.timeWindowMs ?? 60_000,
+    ...(deps.redis ? { redis: deps.redis } : {}),
+    // Per-user once authenticated, per-IP before that (PRD 7.7).
+    keyGenerator: (req) => req.user?.userId ?? req.ip,
+  });
+
+  // Single choke point for the error envelope: raw provider/framework
+  // errors never leave the API (architecture §6).
+  app.setErrorHandler((error: FastifyError, req, reply) => {
+    if (error.statusCode === 429) {
+      return reply.code(429).send(err("RATE_LIMITED", "Too many requests — slow down"));
+    }
+    if (error.validation) {
+      return reply.code(400).send(err("VALIDATION_ERROR", "Invalid request"));
+    }
+    req.log.error(error);
+    return reply.code(500).send(err("INTERNAL", "Something went wrong"));
+  });
+
+  await app.register(authPlugin, { provider: deps.authProvider, prisma: deps.prisma });
 
   app.get(
     "/health",
@@ -30,4 +68,4 @@ export function buildApp(env: Env) {
   return app;
 }
 
-export type App = ReturnType<typeof buildApp>;
+export type App = Awaited<ReturnType<typeof buildApp>>;

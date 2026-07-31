@@ -19,10 +19,14 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
     "@goldbag/shared": "workspace:*",
     "@prisma/client": "^6.10.0",
+    "@privy-io/server-auth": "^1.28.0",
     "fastify": "^5.4.0",
+    "fastify-plugin": "^5.0.0",
     "fastify-type-provider-zod": "^6.0.0",
+    "ioredis": "^5.6.0",
     "pino": "^9.7.0",
     "zod": "^4.0.0"
   },
