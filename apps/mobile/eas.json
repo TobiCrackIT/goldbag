@@ -1,26 +1,36 @@
 {
   "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
   "build": {
+    "base": {
+      "env": {
+        "//": "No Sentry project exists yet, so sentry-cli has no auth token and its source-map upload fails the whole Xcode build. Remove this once a real Sentry org/project + SENTRY_AUTH_TOKEN secret are configured.",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "APP_VARIANT": "dev" },
+      "env": { "APP_VARIANT": "dev", "SENTRY_DISABLE_AUTO_UPLOAD": "true" },
       "android": { "buildType": "apk" },
       "ios": { "simulator": true }
     },
     "device": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
-      "env": { "APP_VARIANT": "dev" },
+      "env": { "APP_VARIANT": "dev", "SENTRY_DISABLE_AUTO_UPLOAD": "true" },
       "android": { "buildType": "apk" }
     },
     "staging": {
+      "extends": "base",
       "distribution": "internal",
-      "env": { "APP_VARIANT": "staging" },
+      "env": { "APP_VARIANT": "staging", "SENTRY_DISABLE_AUTO_UPLOAD": "true" },
       "android": { "buildType": "apk" }
     },
     "production": {
-      "env": { "APP_VARIANT": "prod" },
+      "extends": "base",
+      "env": { "APP_VARIANT": "prod", "SENTRY_DISABLE_AUTO_UPLOAD": "true" },
       "autoIncrement": true
     }
   },
