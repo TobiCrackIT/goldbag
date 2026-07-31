@@ -58,15 +58,15 @@
   `AuthProvider` interface (§4.3b) with the Privy adapter in `modules/auth/providers/privy/` (server SDK, keys cached); upsert `users` + `wallets` on first sight, attach `req.user`; per-IP and per-user rate limiting (Redis); lint rule blocks vendor SDK imports outside `providers/`.
   **Verify:** integration test — a real (test-app) Privy token creates a user row and returns a session; a forged token gets 401; hammering an endpoint gets 429; a mock second adapter passes the same integration suite (proves the seam).
 
-- [ ] **1.4 — Asset registry module + admin endpoints**
+- [x] **1.4 — Asset registry module + admin endpoints**
   CRUD under `/admin` (allowlist-token auth), public `GET /assets?category=&search=&cursor=` with pagination and status filtering (only `listed` visible).
   **Verify:** integration test — admin adds an asset, it appears in the public list; `paused` assets don't; search by name/ticker works.
 
-- [ ] **1.5 — Price poller worker + Redis cache**
+- [x] **1.5 — Price poller worker + Redis cache**
   BullMQ scheduled job (5–15s, batched) hitting the chosen price vendor → upsert `asset_stats`, write `price:{assetId}` (TTL 60s), publish to `prices` pub/sub channel.
   **Verify:** with 3 seeded assets, `asset_stats.updated_at` stays ≤ 30s stale over a 5-minute run; Redis keys present.
 
-- [ ] **1.6 — Market endpoints: prices + candles**
+- [x] **1.6 — Market endpoints: prices + candles**
   `GET /market/prices?ids=` (cache-first), candle-builder job (1m cadence + backfill-on-listing), `GET /market/:assetId/candles?interval=` for 1D/1W/1M/1Y/All.
   **Verify:** integration test — candles exist for every seeded asset in every interval; newly listed asset has backfilled candles within 5 min.
 
