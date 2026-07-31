@@ -60,5 +60,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     variant,
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? active.api,
+    // Privy app id + mobile client id are publishable (they ship in the
+    // binary); the app secret is server-only and never appears here.
+    privyAppId: process.env.EXPO_PUBLIC_PRIVY_APP_ID ?? "cms7q6t4200kb0cl81w6nikz4",
+    privyClientId:
+      process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID ??
+      "client-WY6c2hMSMc1KxpEBCyZcp1cVF4dFgqAyX6dptWLdXD66G",
+    // Hosted key-export page (task 2.6). Unset until it's deployed, in
+    // which case the session port reports export as unsupported rather
+    // than pretending it works.
+    keyExportUrl: process.env.EXPO_PUBLIC_KEY_EXPORT_URL ?? null,
   },
 });
