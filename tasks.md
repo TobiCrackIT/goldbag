@@ -27,9 +27,8 @@
 - [ ] **0.3 — ~~Spike: Privy Expo end-to-end custody path~~ Deferred (2026-07-30), folded into 2.3/2.6**
   Decision: instead of a throwaway spike, the auth/wallet vendor is contained behind the `AuthProvider` / `WalletSession` seam (architecture §4.3b, §5.6), so a vendor failure discovered mid-build costs one adapter, not a rewrite. Custody-path validation moves into real tasks: 2.3 verifies a devnet transfer signed through the session port, 2.6 verifies the Phantom key-export round-trip. First Jupiter versioned-tx signature happens in 4.4 — accepted residual risk.
 
-- [ ] **0.4 — Spike: Jupiter swap with platform fee**
-  Node script: quote USDC→AAPLx via Jupiter API with platform-fee params, build tx, sign with a test keypair, submit on mainnet with ~$2, confirm fee lands in the fee account. Also test the gasless path (fee-payer options — Privy sponsorship vs Jupiter fee-payer).
-  **Verify:** script output shows fee-account balance increase; REPORT.md records chosen fee mechanism and gasless strategy (resolves open questions #4/#6).
+- [ ] **0.4 — ~~Spike: Jupiter swap with platform fee~~ Deferred (2026-07-31), folded into 4.3/4.4/4.6**
+  Decision: swap mechanics live behind the `ChainAdapter` seam, and nothing before Phase 4 consumes this spike's outputs. Fee validation is absorbed into 4.4's real $2 mainnet test (fee-account balance assertion added); gasless strategy selection moves into 4.6. Design contingency noted for 4.3: most xStocks/GLDx are Token-2022 mints — if Jupiter platform fees misbehave on Token-2022 output, take the fee on the USDC input side instead. Founder decision still owed before 4.3: fee level (50 vs 100 bps, open question #4).
 
 - [x] **0.5 — Spike: gold/silver mint selection** *(blocking open question #2)* → [decision](docs/spikes/gold-silver-mints/REPORT.md)
   Evaluate candidate mints (liquidity depth, issuer credibility, redemption, bridge risk) using Birdeye/Jupiter data.
@@ -163,14 +162,14 @@
 
 - [ ] **4.4 — Build & submit endpoints**
   `POST /trade/:orderId/build` → base64 unsigned tx (status=awaiting_signature); `POST /trade/:orderId/submit` → adapter submit, status=submitted, enqueue `trade-track`.
-  **Verify:** integration test with a test keypair signs the built tx and submits on mainnet ($2); order reaches `submitted` with a tx signature.
+  **Verify:** integration test with a test keypair signs the built tx and submits on mainnet ($2); order reaches `submitted` with a tx signature; platform-fee account balance increases by the expected amount (absorbs deferred 0.4).
 
 - [ ] **4.5 — Trade tracking worker + error taxonomy**
   `trade-track` polls with backoff (1s→60s); confirmed → write/consume `position_lots`, publish WS event + push; failed → mapped `error_code` (slippage / blockhash_expired / insufficient_funds / network).
   **Verify:** integration tests for confirm and each failure mapping (mock RPC); a real staging trade lands `confirmed` with a lot row.
 
-- [ ] **4.6 — Gasless: fee-payer integration**
-  Wire the strategy chosen in 0.4 so a wallet holding only USDC can trade.
+- [ ] **4.6 — Gasless: select strategy + fee-payer integration** *(absorbs deferred 0.4; resolves open question #6)*
+  Evaluate Privy fee sponsorship vs self-run fee payer vs Jupiter fee-payer options, pick one, and wire it so a wallet holding only USDC can trade.
   **Verify:** staging E2E — a fresh wallet with $10 USDC and **zero SOL** completes a buy (PRD 7.4 acceptance).
 
 - [ ] **4.7 — Trade ticket UI (`trade/[assetId]` modal)**
