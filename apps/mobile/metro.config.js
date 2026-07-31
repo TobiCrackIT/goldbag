@@ -18,4 +18,10 @@ config.resolver.nodeModulesPaths = [
 config.resolver.unstable_enableSymlinks = true;
 config.resolver.disableHierarchicalLookup = true;
 
+// Prefer browser/react-native export conditions over "node". Without
+// this, packages with conditional exports (jose, pulled in by the Privy
+// SDK) resolve to their Node build and import node:crypto, which the
+// React Native runtime has no implementation for.
+config.resolver.unstable_conditionNames = ["react-native", "browser", "require", "default"];
+
 module.exports = withNativeWind(config, { input: "./src/global.css" });

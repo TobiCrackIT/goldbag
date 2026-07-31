@@ -7,7 +7,7 @@ import {
   type AssetCategory,
   type CandleInterval,
 } from "@goldbag/shared";
-import { request } from "./client.js";
+import { request } from "./client";
 
 /** One function per API route; schemas come from the shared contract. */
 
