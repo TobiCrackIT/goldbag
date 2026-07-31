@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@fastify/rate-limit": "^10.3.0",
+    "bullmq": "^5.56.0",
     "@goldbag/shared": "workspace:*",
     "@prisma/client": "^6.10.0",
     "@privy-io/server-auth": "^1.28.0",

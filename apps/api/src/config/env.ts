@@ -19,6 +19,10 @@ const EnvSchema = z.object({
   // Allowlist token for /admin routes (curl/internal dashboard — PRD §6).
   // Admin routes stay disabled when unset.
   ADMIN_TOKEN: z.string().min(16).optional(),
+  // Price vendor (docs/spikes/price-vendor/REPORT.md): Jupiter lite tier;
+  // swap base URL for the keyed portal tier when we outgrow it.
+  JUPITER_BASE_URL: z.url().default("https://lite-api.jup.ag"),
+  PRICE_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(10_000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
