@@ -70,17 +70,17 @@
   `GET /market/prices?ids=` (cache-first), candle-builder job (1m cadence + backfill-on-listing), `GET /market/:assetId/candles?interval=` for 1D/1W/1M/1Y/All.
   **Verify:** integration test — candles exist for every seeded asset in every interval; newly listed asset has backfilled candles within 5 min.
 
-- [ ] **1.7 — Watchlist module**
+- [x] **1.7 — Watchlist module**
   `GET /watchlist`, `POST/DELETE /watchlist/:assetId`, PK `(user_id, asset_id)` idempotency.
   **Verify:** integration test — add, list, delete round-trip; double-add is a no-op, not an error.
 
-- [ ] **1.8 — WebSocket gateway**
+- [x] **1.8 — WebSocket gateway**
   `WS /ws` with token auth; `prices` channel (subscribe by asset ids) and `user:{id}:events` channel; Redis pub/sub fan-out so multiple API instances work.
   **Verify:** test client sees a price tick ≤ 15s after connecting; unauthenticated socket is refused.
 
-- [ ] **1.9 — Deploy `api` + `worker` to staging**
-  Railway/Fly + managed Postgres + Upstash Redis; Sentry wired; GitHub Actions CI (typecheck, lint, test on PR; `prisma migrate deploy` in deploy pipeline).
-  **Verify:** staging `/health` green; a seeded asset shows a live price via the staging WS; CI red-blocks a PR with a failing test.
+- [~] **1.9 — Deploy `api` + `worker` to staging** — *CI half done; deploy half blocked on hosting accounts*
+  ✅ GitHub Actions CI (typecheck, lint, test on PR with Postgres 16 + Redis 7 services, migrations + seed). ✅ Fly config with two process groups + `release_command` migrations ([`fly.staging.toml`](fly.staging.toml)), deploy runbook ([`docs/deploy.md`](docs/deploy.md)). ⏸ Blocked: Fly + Neon/Upstash accounts (+ a **separate staging Privy app**), then Sentry.
+  **Verify:** ✅ CI sequence proven against a fresh database (23 passed, 2 skipped) and red-blocks a failing test (exit 1). ⏸ Pending accounts: staging `/health` green; seeded asset shows a live price via the staging WS.
 
 ---
 

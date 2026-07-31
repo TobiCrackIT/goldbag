@@ -1,0 +1,45 @@
+# Staging deploy config (task 1.9). One image, two process groups —
+# matches the architecture's "api + worker from one codebase" shape.
+#   fly deploy -c fly.staging.toml
+app = "goldbag-api-staging"
+primary_region = "jnb" # Johannesburg — closest Fly region to the beachhead market
+
+[build]
+dockerfile = "apps/api/Dockerfile"
+
+[processes]
+api = "node apps/api/dist/index.js"
+worker = "node apps/api/dist/worker.js"
+
+[deploy]
+# Migrations run once per deploy, before any new machine takes traffic.
+release_command = "sh -c 'cd apps/api && npx prisma migrate deploy'"
+
+[env]
+NODE_ENV = "production"
+PORT = "3000"
+
+[http_service]
+internal_port = 3000
+force_https = true
+auto_stop_machines = "suspend"
+auto_start_machines = true
+min_machines_running = 1
+processes = ["api"]
+
+[[http_service.checks]]
+grace_period = "10s"
+interval = "30s"
+method = "GET"
+path = "/health"
+timeout = "5s"
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "512mb"
+processes = ["api"]
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "512mb"
+processes = ["worker"]
