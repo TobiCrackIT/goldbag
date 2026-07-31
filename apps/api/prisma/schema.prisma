@@ -1,0 +1,268 @@
+// Goldbag system of record (architecture §4.4).
+// Postgres is the system of record for everything WE originate, and an
+// index for everything the chain originates. Balances are deliberately
+// not stored — the chain is the source of truth.
+// All money/quantity columns are DECIMAL in human units; conversion to
+// base units happens only inside chain adapters, using BigInt.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- identity (vendor seam §4.3b: no vendor-named columns) ----------
+
+model User {
+  id             String   @id @default(uuid())
+  authProvider   String   @map("auth_provider")
+  providerUserId String   @map("provider_user_id")
+  email          String?
+  appLockPrefs   Json?    @map("app_lock_prefs")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  wallets        Wallet[]
+  watchlistItems WatchlistItem[]
+  orders         Order[]
+  pushTokens     PushToken[]
+  notifications  Notification[]
+
+  @@unique([authProvider, providerUserId])
+  @@map("users")
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  chain     String
+  address   String
+  isPrimary Boolean  @default(true) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id])
+  orders       Order[]
+  deposits     Deposit[]
+  positionLots PositionLot[]
+
+  @@unique([chain, address])
+  @@index([userId])
+  @@map("wallets")
+}
+
+// ---------- asset registry & market data ----------
+
+enum AssetCategory {
+  stock
+  etf
+  gold_silver
+}
+
+enum AssetStatus {
+  listed
+  paused
+  delisted
+}
+
+model Asset {
+  id           String        @id @default(uuid())
+  chain        String
+  tokenAddress String        @map("token_address")
+  symbol       String
+  name         String
+  category     AssetCategory
+  logoUrl      String?       @map("logo_url")
+  decimals     Int
+  status       AssetStatus   @default(paused)
+  listedAt     DateTime?     @map("listed_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  stats          AssetStats?
+  candles        Candle[]
+  watchlistItems WatchlistItem[]
+  orders         Order[]
+  positionLots   PositionLot[]
+
+  @@unique([chain, tokenAddress])
+  @@index([status, category])
+  @@map("assets")
+}
+
+// Hot row, upserted by the price-poller every 5–15s.
+model AssetStats {
+  assetId            String   @id @map("asset_id")
+  priceUsd           Decimal  @map("price_usd") @db.Decimal(38, 18)
+  change24hPct       Decimal  @map("change_24h_pct") @db.Decimal(12, 6)
+  volume24hUsd       Decimal? @map("volume_24h_usd") @db.Decimal(38, 6)
+  liquidityUsd       Decimal? @map("liquidity_usd") @db.Decimal(38, 6)
+  // Official underlying equity/metal reference price (Jupiter stockData) —
+  // vendor decision, docs/spikes/price-vendor/REPORT.md.
+  underlyingPriceUsd Decimal? @map("underlying_price_usd") @db.Decimal(38, 18)
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@map("asset_stats")
+}
+
+enum CandleInterval {
+  m1  @map("1m")
+  m15 @map("15m")
+  h1  @map("1h")
+  d1  @map("1d")
+}
+
+// 1m rows are TTL'd to 7d by a worker job (no native partitioning in
+// Prisma; revisit per architecture §7 if chart usage outgrows this).
+model Candle {
+  assetId  String         @map("asset_id")
+  interval CandleInterval
+  ts       DateTime
+  o        Decimal        @db.Decimal(38, 18)
+  h        Decimal        @db.Decimal(38, 18)
+  l        Decimal        @db.Decimal(38, 18)
+  c        Decimal        @db.Decimal(38, 18)
+  volume   Decimal?       @db.Decimal(38, 6)
+
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@id([assetId, interval, ts])
+  @@index([interval, ts])
+  @@map("candles")
+}
+
+model WatchlistItem {
+  userId    String   @map("user_id")
+  assetId   String   @map("asset_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id])
+  asset Asset @relation(fields: [assetId], references: [id])
+
+  @@id([userId, assetId])
+  @@map("watchlist_items")
+}
+
+// ---------- trading (intent-shaped, PRD P2: limit/DCA later) ----------
+
+enum OrderSide {
+  buy
+  sell
+}
+
+enum OrderStatus {
+  quoted
+  awaiting_signature
+  submitted
+  confirmed
+  failed
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  userId         String      @map("user_id")
+  walletId       String      @map("wallet_id")
+  assetId        String      @map("asset_id")
+  side           OrderSide
+  status         OrderStatus @default(quoted)
+  inputToken     String      @map("input_token")
+  inputAmount    Decimal     @map("input_amount") @db.Decimal(38, 18)
+  quotedOutput   Decimal?    @map("quoted_output") @db.Decimal(38, 18)
+  executedOutput Decimal?    @map("executed_output") @db.Decimal(38, 18)
+  priceImpactBps Int?        @map("price_impact_bps")
+  feeBps         Int         @map("fee_bps")
+  txSignature    String?     @unique @map("tx_signature")
+  errorCode      String?     @map("error_code")
+  quotedAt       DateTime    @default(now()) @map("quoted_at")
+  submittedAt    DateTime?   @map("submitted_at")
+  confirmedAt    DateTime?   @map("confirmed_at")
+  failedAt       DateTime?   @map("failed_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  asset  Asset  @relation(fields: [assetId], references: [id])
+
+  @@index([userId, quotedAt(sort: Desc)])
+  @@index([status, submittedAt])
+  @@map("orders")
+}
+
+// ---------- funding ----------
+
+enum DepositToken {
+  usdc
+  usdt
+}
+
+enum DepositStatus {
+  seen
+  confirmed
+}
+
+model Deposit {
+  id          String        @id @default(uuid())
+  walletId    String        @map("wallet_id")
+  token       DepositToken
+  amount      Decimal       @db.Decimal(38, 18)
+  txSignature String        @unique @map("tx_signature")
+  status      DepositStatus @default(seen)
+  detectedAt  DateTime      @default(now()) @map("detected_at")
+  confirmedAt DateTime?     @map("confirmed_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, detectedAt(sort: Desc)])
+  @@map("deposits")
+}
+
+// ---------- portfolio (cost basis only — balances come from the chain) ----------
+
+model PositionLot {
+  id         String   @id @default(uuid())
+  walletId   String   @map("wallet_id")
+  assetId    String   @map("asset_id")
+  quantity   Decimal  @db.Decimal(38, 18)
+  costUsd    Decimal  @map("cost_usd") @db.Decimal(38, 6)
+  acquiredAt DateTime @default(now()) @map("acquired_at")
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  asset  Asset  @relation(fields: [assetId], references: [id])
+
+  @@index([walletId, assetId])
+  @@map("position_lots")
+}
+
+// ---------- notifications ----------
+
+enum DevicePlatform {
+  ios
+  android
+}
+
+model PushToken {
+  userId    String         @map("user_id")
+  deviceId  String         @map("device_id")
+  platform  DevicePlatform
+  token     String
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, deviceId])
+  @@map("push_tokens")
+}
+
+model Notification {
+  id      String   @id @default(uuid())
+  userId  String   @map("user_id")
+  type    String
+  payload Json
+  sentAt  DateTime @default(now()) @map("sent_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, sentAt(sort: Desc)])
+  @@map("notifications")
+}

@@ -2,7 +2,9 @@ import { afterAll, describe, expect, it } from "vitest";
 import { loadEnv } from "../src/config/env.js";
 import { buildApp } from "../src/app.js";
 
-const app = buildApp(loadEnv({ NODE_ENV: "test" }));
+const app = buildApp(
+  loadEnv({ NODE_ENV: "test", DATABASE_URL: "postgresql://test:test@localhost:5432/test" }),
+);
 afterAll(() => app.close());
 
 describe("GET /health", () => {
