@@ -46,11 +46,11 @@
 
 > Goal: a deployed API a mobile app can build against — auth, asset registry, live prices, charts.
 
-- [ ] **1.1 — `apps/api` skeleton**
+- [x] **1.1 — `apps/api` skeleton**
   Fastify + `fastify-type-provider-zod`, Zod-validated env (`config/env.ts`, process exits on bad env), pino logger with redaction list, `/health` route, Dockerfile, two entrypoints (`index.ts`, `worker.ts` — worker is a no-op loop for now).
   **Verify:** `curl /health` returns `{data:{status:"ok"}}` locally and in Docker.
 
-- [ ] **1.2 — Prisma schema & migrations (full MVP schema)**
+- [x] **1.2 — Prisma schema & migrations (full MVP schema)**
   All tables from architecture §4.4 (`users`, `wallets`, `assets`, `asset_stats`, `candles`, `watchlist_items`, `orders`, `deposits`, `position_lots`, `push_tokens`, `notifications`); DECIMAL for all money/quantity columns; `(chain, token_address)` unique; `users` keyed by `(auth_provider, provider_user_id)` — no vendor-named columns (vendor seam, §4.3b).
   **Verify:** `prisma migrate dev` from empty DB succeeds; seed script inserts 3 sample assets; a smoke test queries them back.
 
