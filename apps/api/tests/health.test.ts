@@ -1,9 +1,12 @@
 import { afterAll, describe, expect, it } from "vitest";
+import type { PrismaClient } from "@prisma/client";
 import { loadEnv } from "../src/config/env.js";
 import { buildApp } from "../src/app.js";
+import { createMockAuthProvider } from "./helpers/mock-auth.js";
 
-const app = buildApp(
+const app = await buildApp(
   loadEnv({ NODE_ENV: "test", DATABASE_URL: "postgresql://test:test@localhost:5432/test" }),
+  { prisma: {} as PrismaClient, authProvider: createMockAuthProvider() },
 );
 afterAll(() => app.close());
 
@@ -17,7 +20,7 @@ describe("GET /health", () => {
 
 describe("env validation", () => {
   it("rejects an invalid PORT", () => {
-    const exit = vi_spyExit();
+    const exit = spyExit();
     loadEnv({ NODE_ENV: "test", PORT: "not-a-port" });
     expect(exit.called).toBe(true);
     exit.restore();
@@ -25,7 +28,7 @@ describe("env validation", () => {
 });
 
 // process.exit spy without pulling in a mocking library for one case
-function vi_spyExit() {
+function spyExit() {
   const original = process.exit;
   const state = { called: false };
   // @ts-expect-error — intentional stub; never actually exits under test
