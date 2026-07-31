@@ -77,6 +77,9 @@ model Asset {
   decimals     Int
   status       AssetStatus   @default(paused)
   listedAt     DateTime?     @map("listed_at")
+  // Set after ONE complete chart-backfill pass (all intervals); null =
+  // still a backfill candidate. Explicit state, not count heuristics.
+  candlesBackfilledAt DateTime? @map("candles_backfilled_at")
   createdAt    DateTime      @default(now()) @map("created_at")
 
   stats          AssetStats?

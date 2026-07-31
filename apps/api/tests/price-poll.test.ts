@@ -28,8 +28,11 @@ describe.skipIf(!hasInfra)("price poller (task 1.5)", () => {
   });
 
   it("one cycle updates asset_stats, caches with TTL, and publishes ticks", async () => {
-    const assets = await prisma.asset.findMany({ where: { status: "listed" } });
-    expect(assets.length).toBeGreaterThanOrEqual(3);
+    // Pin to the seed set — other suites may add transient listed assets.
+    const assets = await prisma.asset.findMany({
+      where: { status: "listed", symbol: { in: ["AAPLx", "GLDx", "XAUt0"] } },
+    });
+    expect(assets.length).toBe(3);
 
     const fakePrices = Object.fromEntries(
       assets.map((a, i) => [
@@ -58,7 +61,7 @@ describe.skipIf(!hasInfra)("price poller (task 1.5)", () => {
       REDIS_URL: process.env.REDIS_URL,
     } as NodeJS.ProcessEnv);
     const result = await runPricePoll(prisma, redis, env);
-    expect(result.updated).toBe(assets.length);
+    expect(result.updated).toBeGreaterThanOrEqual(assets.length);
 
     // asset_stats fresh
     const stats = await prisma.assetStats.findMany({
