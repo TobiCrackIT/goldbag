@@ -14,5 +14,7 @@ allowBuilds:
   prisma: true
   utf-8-validate: true
 
-patchedDependencies:
-  expo-modules-jsi@57.0.4: patches/expo-modules-jsi@57.0.4.patch
+# patchedDependencies: expo-modules-jsi@57.0.4 — disabled for EAS builds.
+# The patch fixes Swift 6.2 (Xcode 26) local compilation; EAS pins the
+# toolchain SDK 57 expects, where the original source compiles and
+# nonisolated(unsafe) may not be available. Re-enable only for local iOS.
