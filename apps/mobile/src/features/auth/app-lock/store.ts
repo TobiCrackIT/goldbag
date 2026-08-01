@@ -23,6 +23,13 @@ interface AppLockState {
   obscured: boolean;
   prefs: AppLockPrefs;
   backgroundedAt: number | null;
+  /**
+   * Whether the gate has already auto-prompted for the current lock.
+   * Without this the gate re-prompts on every render where status is
+   * "locked" — and since a failed attempt sets status back to "locked",
+   * that is an infinite prompt loop the user cannot escape.
+   */
+  autoPrompted: boolean;
 
   init: () => Promise<void>;
   unlock: () => Promise<boolean>;
@@ -38,22 +45,28 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
   obscured: false,
   prefs: DEFAULT_PREFS,
   backgroundedAt: null,
+  autoPrompted: false,
 
   async init() {
     const prefs = await loadPrefs();
-    set({ prefs, status: shouldLockOnColdStart(prefs) ? "locked" : "unlocked" });
+    set({
+      prefs,
+      status: shouldLockOnColdStart(prefs) ? "locked" : "unlocked",
+      autoPrompted: false,
+    });
   },
 
   async unlock() {
     if (get().status === "authenticating") return false;
-    set({ status: "authenticating" });
+    set({ status: "authenticating", autoPrompted: true });
     const result = await authenticate("Unlock Goldbag");
     if (result === "success") {
-      set({ status: "unlocked", obscured: false, backgroundedAt: null });
+      set({ status: "unlocked", obscured: false, backgroundedAt: null, autoPrompted: false });
       return true;
     }
-    // Cancelled, failed or unavailable — content stays hidden. The gate
-    // offers a retry; there is no path that reveals balances on failure.
+    // Cancelled, failed or unavailable — content stays hidden and we do
+    // NOT re-prompt automatically; the gate shows an Unlock button so
+    // the user chooses when to retry.
     set({ status: "locked" });
     return false;
   },
@@ -67,7 +80,12 @@ export const useAppLockStore = create<AppLockState>((set, get) => ({
     const { prefs, backgroundedAt, status } = get();
     if (status === "authenticating") return; // system prompt backgrounded us
     const lock = shouldLockOnForeground(prefs, backgroundedAt, Date.now());
-    set({ status: lock ? "locked" : status, obscured: false });
+    set({
+      status: lock ? "locked" : status,
+      obscured: false,
+      // A fresh lock episode earns one automatic prompt.
+      ...(lock ? { autoPrompted: false } : {}),
+    });
   },
 
   async setPrefs(next) {

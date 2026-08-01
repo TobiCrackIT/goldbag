@@ -10,6 +10,7 @@ import { useAppLockStore } from "./store";
 export function AppLockGate({ children }: { children: ReactNode }) {
   const status = useAppLockStore((s) => s.status);
   const obscured = useAppLockStore((s) => s.obscured);
+  const autoPrompted = useAppLockStore((s) => s.autoPrompted);
   const init = useAppLockStore((s) => s.init);
   const unlock = useAppLockStore((s) => s.unlock);
   const onBackground = useAppLockStore((s) => s.onBackground);
@@ -32,10 +33,12 @@ export function AppLockGate({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [onBackground, onForeground]);
 
-  // Prompt as soon as we enter the locked state, without waiting for a tap.
+  // Prompt once per lock episode, without waiting for a tap. Guarded by
+  // `autoPrompted` so a failed or dismissed prompt doesn't immediately
+  // trigger another one — the user retries via the Unlock button.
   useEffect(() => {
-    if (status === "locked") void unlock();
-  }, [status, unlock]);
+    if (status === "locked" && !autoPrompted) void unlock();
+  }, [status, autoPrompted, unlock]);
 
   const covered = status !== "unlocked" || obscured;
 
