@@ -5,6 +5,12 @@
 module.exports = {
   content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
+  // Our light/dark variables are declared as `:root` / `.dark:root` in
+  // global.css, which only works with the class strategy. NativeWind
+  // defaults to `media`, where it never applies a `dark` class — so the
+  // dark palette silently never activated. NativeWind drives the class
+  // from the device appearance via useColorScheme.
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
