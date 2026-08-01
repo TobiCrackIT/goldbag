@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { mmkvPersistAdapter } from "./storage.js";
-import { ApiError, NetworkError } from "./api/errors.js";
+import { mmkvPersistAdapter } from "./storage";
+import { ApiError, NetworkError } from "./api/errors";
 
 /**
  * Server state lives here and nowhere else (architecture §5.3). The MMKV

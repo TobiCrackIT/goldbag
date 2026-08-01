@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AssetCategory, CandleInterval } from "@goldbag/shared";
-import { getAssets, getCandles, getPrices } from "./endpoints.js";
+import { getAssets, getCandles, getPrices } from "./endpoints";
 
 /** Query keys in one place so cache writes (WS ticks) can target them. */
 export const queryKeys = {

@@ -364,8 +364,19 @@ interface WalletSession {
   login(method: 'email' | 'google' | 'apple'): Promise<void>;
   logout(): Promise<void>;
   signTransaction(txBase64: string): Promise<string>;  // signed, base64
-  exportSecretKey(): Promise<string>;    // gated by biometric flow upstream
+  keyExport: KeyExport;                  // capability, not a value — see below
 }
+
+// How a vendor surfaces key export. Modelled as a capability because not
+// every vendor can hand back a raw key: Privy's mobile SDKs deliberately
+// cannot — the key is assembled on a separate origin inside a hosted page
+// so neither our app nor Privy can read it (docs.privy.io/recipes/
+// mobile-key-export). An `exportSecretKey(): Promise<string>` method
+// would be a lie the type system then spreads through the app.
+type KeyExport =
+  | { kind: 'unsupported'; reason: string }
+  | { kind: 'native' }                    // adapter returns the key directly
+  | { kind: 'webview'; url: string };     // open the vendor-hosted export page
 ```
 
 - `features/auth/providers/privy/` is the only directory allowed to import `@privy-io/expo` — enforced with an ESLint `no-restricted-imports` rule so the boundary cannot erode PR by PR.

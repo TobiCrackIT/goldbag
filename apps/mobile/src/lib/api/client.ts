@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type { z } from "zod";
 import { ErrorCode } from "@goldbag/shared";
-import { ApiError, NetworkError } from "./errors.js";
+import { ApiError, NetworkError } from "./errors";
 
 /**
  * Typed fetch client over the shared Zod contracts. Every response is

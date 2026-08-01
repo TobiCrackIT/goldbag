@@ -1,3 +1,10 @@
+# React Native's tooling assumes a flat node_modules: expo-router,
+# @expo/metro-runtime and react-native itself import packages they
+# don't declare, which pnpm's strict symlinked layout can't resolve at
+# bundle time. Hoisting is the documented setup for RN + pnpm.
+# (pnpm 11 reads this here, not from .npmrc.)
+nodeLinker: hoisted
+
 packages:
   - "apps/*"
   - "packages/*"
@@ -13,3 +20,8 @@ allowBuilds:
   msgpackr-extract: true
   prisma: true
   utf-8-validate: true
+
+# patchedDependencies: expo-modules-jsi@57.0.4 — disabled for EAS builds.
+# The patch fixes Swift 6.2 (Xcode 26) local compilation; EAS pins the
+# toolchain SDK 57 expects, where the original source compiles and
+# nonisolated(unsafe) may not be available. Re-enable only for local iOS.
