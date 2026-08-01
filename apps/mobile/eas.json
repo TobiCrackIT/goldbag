@@ -1,0 +1,21 @@
+{
+  "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": { "APP_VARIANT": "dev" },
+      "android": { "buildType": "apk" }
+    },
+    "staging": {
+      "distribution": "internal",
+      "env": { "APP_VARIANT": "staging" },
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "env": { "APP_VARIANT": "prod" },
+      "autoIncrement": true
+    }
+  },
+  "submit": { "production": {} }
+}

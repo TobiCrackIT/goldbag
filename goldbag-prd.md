@@ -141,7 +141,8 @@ The cost of not solving this: the fast-growing RWA-on-Solana liquidity gets capt
 - *Acceptance:* portfolio value matches on-chain balances × current prices within 0.5%; every trade appears in history within 30s.
 
 **7.6 Design & UX quality bar (Moonshot-grade)**
-- Dark-first, sleek visual design; 60fps scrolling and chart interaction on mid-range Android (use Reanimated + Skia-based charts; keep heavy work off the JS thread).
+- **Monochrome design system** (updated 2026-07-31): black, white and true neutral greys only — no hues anywhere. Supports **both light and dark** appearance, following the device setting; the two are inversions of one palette, so no screen branches on theme. Price direction is signalled by sign, arrow and weight — never by colour — so gains/losses read correctly for colour-blind users and in greyscale.
+- 60fps scrolling and chart interaction on mid-range Android (use Reanimated + Skia-based charts; keep heavy work off the JS thread).
 - Haptic feedback on: confirm gestures, trade success/failure, favouriting, pull-to-refresh.
 - Every data screen has designed loading, empty, and error states — no blank screens, no raw error strings.
 - Checkout-critical flows usable one-handed on small screens (≥ 360px width).
@@ -256,4 +257,4 @@ Measurement: product analytics (e.g., PostHog/Amplitude) + on-chain volume attri
 - Revenue = swap platform fee via Jupiter fee mechanism (no subscription, no spread markup beyond the fee).
 - English-only at launch.
 - Backend hosted on a managed platform (Railway/Render/Fly) + managed Postgres; Helius (or similar) for RPC/webhooks.
-- Moonshot is the UX benchmark: dark theme, card-based asset lists, big price charts, slide-to-confirm trades, pervasive haptics.
+- Moonshot is the UX benchmark for *interaction*: card-based asset lists, big price charts, slide-to-confirm trades, pervasive haptics. The palette is deliberately not Moonshot's — Goldbag is monochrome, light and dark (see 7.6).
