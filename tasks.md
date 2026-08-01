@@ -1,7 +1,10 @@
 # Goldbag — Build Tasks
 
-**Companion docs:** `goldbag-prd.md` (v0.2) · `goldbag-architecture.md` (v0.1)
-**Last updated:** 2026-07-29
+**Companion docs:** `goldbag-prd.md` (v0.2) · `goldbag-architecture.md` (v0.2)
+**Last updated:** 2026-08-01
+
+**Status key:** `[x]` done and verified · `[~]` built but Verify only partly satisfied · `[ ]` not started
+**Progress:** 14 done · 4 partial (1.9, 2.1, 2.3, 2.4) · 2 deferred by decision (0.3, 0.4) · 23 not started
 
 ## Workflow rules
 
@@ -80,7 +83,8 @@
 
 - [~] **1.9 — Deploy `api` + `worker` to staging** — *CI half done; deploy half blocked on hosting accounts*
   ✅ GitHub Actions CI (typecheck, lint, test on PR with Postgres 16 + Redis 7 services, migrations + seed). ✅ Fly config with two process groups + `release_command` migrations ([`fly.staging.toml`](fly.staging.toml)), deploy runbook ([`docs/deploy.md`](docs/deploy.md)). ⏸ Blocked: Fly + Neon/Upstash accounts (+ a **separate staging Privy app**), then Sentry.
-  **Verify:** ✅ CI sequence proven against a fresh database (23 passed, 2 skipped) and red-blocks a failing test (exit 1). ⏸ Pending accounts: staging `/health` green; seeded asset shows a live price via the staging WS.
+  **Verify:** ✅ CI sequence proven against a fresh database and red-blocks a failing test (exit 1); 10/10 turbo tasks, 80 tests green as of `c390956`. ⏸ Pending accounts: staging `/health` green; seeded asset shows a live price via the staging WS.
+  **Note (2026-08-01):** CI went red on the Phase 2 branches because `eslint-config-expo` was missing — meaning **mobile lint had never executed at any point during Phase 2**, so the vendor-seam lint rule was decorative until now. Fixed in `c390956`. Lesson: a task's Verify step must name the exact command CI runs, not a subset of it.
 
 ---
 
@@ -88,21 +92,22 @@
 
 > Goal: a user can install a dev build, sign up with email, see their wallet address, and export their key. (PRD Phase 1 scope.)
 
-- [ ] **2.1 — `apps/mobile` skeleton**
-  Expo dev-client + EAS config (`dev`/`staging`/`prod` variants), Expo Router with `(onboarding)` and `(main)` groups, NativeWind + dark-first design tokens in `src/theme/`, Sentry.
-  **Verify:** EAS dev build installs and runs on a physical Android device; tab shell renders at 60fps (perf monitor).
+- [~] **2.1 — `apps/mobile` skeleton** — *built and running on iOS; Android + 60fps bar unverified*
+  Expo dev-client + EAS config (`dev`/`staging`/`prod` variants), Expo Router with `(onboarding)` and `(main)` groups, NativeWind + **monochrome** design tokens in `src/theme/` (light + dark — PRD §7.6 revised 2026-07-31), ~~Sentry~~.
+  **Scope change:** Sentry's config plugin breaks EAS builds under pnpm (`sentry-cli` can't resolve deps); plugin removed. Error reporting is now owed by 1.9's blocked half.
+  **Verify:** ✅ EAS cloud dev build installs and runs on the **iOS simulator**; tab shell renders. ⏸ Physical mid-range Android + 60fps perf-monitor reading still outstanding.
 
-- [ ] **2.2 — Typed API client + TanStack Query + MMKV persistence**
-  `src/lib/api/` client generated over `packages/shared` schemas; QueryClient with MMKV persister; `<QueryBoundary>` wrapper enforcing loading/empty/error states.
-  **Verify:** a demo screen lists staging assets with skeleton → data → airplane-mode error state, all three visibly designed.
+- [x] **2.2 — Typed API client + TanStack Query + MMKV persistence**
+  `src/lib/api/` client over `packages/shared` schemas; QueryClient with MMKV persister; `<QueryBoundary>` wrapper enforcing loading/empty/error states.
+  **Verify:** ✅ Markets screen lists live assets with skeleton → data (AAPLx $308.33, GLDx $366.61, XAUt0 $4,039.08 from the local API) → error state, all three designed. Airplane-mode pass still owed.
 
-- [ ] **2.3 — Auth onboarding flow (session port + Privy adapter)**
-  `welcome → login` (email OTP, Google, Apple) → embedded wallet provisioned → `POST /auth/session` → land on Home. `WalletSession` port (§5.6) with the Privy adapter in `features/auth/providers/privy/`; `@privy-io/expo` import blocked elsewhere by lint rule.
-  **Verify:** Maestro E2E — fresh install to authenticated Home in ≤ 60s; relogin on a second device shows the same wallet address (PRD 7.1 acceptance); a devnet transfer signed via `signTransaction` through the port lands on-chain (custody path validated — replaces spike 0.3).
+- [~] **2.3 — Auth onboarding flow (session port + Privy adapter)** — *seam + email OTP done; custody path unproven*
+  `welcome → login` (email OTP) → embedded wallet provisioned → `POST /auth/session` → land on Home. `WalletSession` port (§5.6) with the Privy adapter in `features/auth/providers/privy/`; `@privy-io/expo` import blocked elsewhere by a lint rule **that only started running on 2026-08-01** (see note under 1.9).
+  **Verify:** ✅ email OTP login reaches authenticated Home; ⏸ Google (`google_oauth` still `false` in the Privy dashboard) and Apple untested; ⏸ **no Maestro E2E yet**; ⏸ **the devnet transfer through `signTransaction` has not been run** — this was spike 0.3's whole purpose, so the custody path remains the largest unretired risk in Phase 2.
 
-- [ ] **2.4 — App lock (biometric/PIN gate)**
-  Top-level overlay in `_layout.tsx`: cold start + foreground-after-N-minutes; `expo-local-authentication`; settings stored in secure store.
-  **Verify:** manual test matrix on iOS + Android — lock triggers on cold start and background/foreground; cancel keeps content hidden.
+- [~] **2.4 — App lock (biometric/PIN gate)** — *iOS verified, Android not*
+  Top-level overlay in `_layout.tsx`: cold start + foreground-after-N-minutes; `expo-local-authentication`; prefs in secure store. Policy is pure and unit-tested (`policy.ts`); the store carries an `autoPrompted` flag so a cancelled prompt can't loop.
+  **Verify:** ✅ iOS simulator — lock fires on cold start, cancel keeps content hidden, matching Touch ID unlocks (the re-prompt loop found on 2026-07-31 is fixed). ⏸ Android matrix and the biometric **success** path on real hardware outstanding.
 
 - [ ] **2.5 — Wallet screen: address, QR, copy**
   `account/wallet.tsx` + `GET /wallet/deposit-info`; address with QR, copy-with-haptic, "Solana network only — USDC/USDT" warning copy.
